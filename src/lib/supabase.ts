@@ -2,8 +2,8 @@ import { createClient } from '@supabase/supabase-js'
 import { createBrowserClient } from '@supabase/ssr'
 
 // 환경 변수에서 Supabase 설정을 가져옵니다
-const supabaseUrl = https://rzyqldiycdzcwvzlmmkq.supabase.co || 'https://placeholder.supabase.co'
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-key'
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://rzyqldiycdzcwvzlmmkq.supabase.co'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ6eXFsZGl5Y2R6Y3d2emxtbWtxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3NjE5MTMsImV4cCI6MjA3MzMzNzkxM30.Pp0DEFUUFb0DcArzjF3qxQ8WaVEylZsH8DGUJdv0-NM'
 
 // 클라이언트 사이드용 Supabase 클라이언트
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
