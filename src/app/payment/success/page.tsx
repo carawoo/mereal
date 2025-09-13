@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { paymentService } from '@/lib/payment'
 
-export default function PaymentSuccessPage() {
+function PaymentSuccessContent() {
   const [verifying, setVerifying] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [orderData, setOrderData] = useState<any>(null)
@@ -207,5 +207,20 @@ export default function PaymentSuccessPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PaymentSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4">
+        <div className="max-w-md mx-auto text-center">
+          <div className="animate-spin mx-auto h-12 w-12 border-4 border-primary-500 border-t-transparent rounded-full mb-4"></div>
+          <p className="text-gray-600">결제 정보를 확인하는 중...</p>
+        </div>
+      </div>
+    }>
+      <PaymentSuccessContent />
+    </Suspense>
   )
 }

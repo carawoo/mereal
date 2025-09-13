@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function PaymentFailPage() {
+function PaymentFailContent() {
   const [errorInfo, setErrorInfo] = useState<{
     code?: string
     message?: string
@@ -16,7 +16,10 @@ export default function PaymentFailPage() {
     const code = searchParams.get('code')
     const message = searchParams.get('message')
     
-    setErrorInfo({ code, message })
+    setErrorInfo({ 
+      code: code || undefined, 
+      message: message || undefined 
+    })
     
     // Clear session storage
     sessionStorage.removeItem('orderData')
@@ -148,5 +151,20 @@ export default function PaymentFailPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function PaymentFailPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 px-4">
+        <div className="max-w-md mx-auto text-center">
+          <div className="animate-spin mx-auto h-12 w-12 border-4 border-primary-500 border-t-transparent rounded-full mb-4"></div>
+          <p className="text-gray-600">로딩 중...</p>
+        </div>
+      </div>
+    }>
+      <PaymentFailContent />
+    </Suspense>
   )
 }

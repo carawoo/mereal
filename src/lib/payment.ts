@@ -1,5 +1,18 @@
-import { loadTossPayments, TossPayments } from '@tosspayments/payment-sdk'
+import { loadTossPayments } from '@tosspayments/payment-sdk'
 import { createSupabaseClient } from './supabase'
+
+// TossPayments 타입 정의 (SDK의 실제 타입에 맞춤)
+interface TossPayments {
+  requestPayment: (method: '카드' | 'CARD', paymentData: {
+    amount: number
+    orderId: string
+    orderName: string
+    customerName: string
+    customerEmail: string
+    successUrl: string
+    failUrl: string
+  }) => Promise<void>
+}
 
 export interface PaymentData {
   orderId: string
@@ -18,7 +31,7 @@ export interface PaymentResult {
 }
 
 export class PaymentService {
-  private tossPayments: TossPayments | null = null
+  private tossPayments: any = null
   private supabase = createSupabaseClient()
   private clientKey: string
 
