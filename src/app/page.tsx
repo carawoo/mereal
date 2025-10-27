@@ -1,196 +1,392 @@
 'use client'
 
-import Link from 'next/link'
-import Header from '@/components/Header'
+import { useState } from 'react'
+import { CHARACTER_POSES, type CharacterPose } from '@/lib/characterStyle'
 
 export default function Home() {
+  const [uploadedImage, setUploadedImage] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const [transformedDescription, setTransformedDescription] = useState<string | null>(null)
+  const [alternativeImages, setAlternativeImages] = useState<any[]>([]) // 대안 이미지 2개
+  const [selectedAlternativeIndex, setSelectedAlternativeIndex] = useState<number | null>(null) // 선택된 대안 이미지 인덱스
+  const [mainImage, setMainImage] = useState<any>(null) // 선택된 메인 이미지
+  const [mainCharacterDescription, setMainCharacterDescription] = useState<string | null>(null) // 메인 이미지의 캐릭터 설명
+  const [selectedPose, setSelectedPose] = useState<string | null>(null)
+  const [generatedImages, setGeneratedImages] = useState<any[]>([])
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setUploadedImage(file)
+      const url = URL.createObjectURL(file)
+      setPreviewUrl(url)
+    }
+  }
+
+  // 실행 버튼: 자동으로 변환 + 메인 이미지 생성
+  const handleExecute = async () => {
+    if (!uploadedImage) {
+      setError('이미지를 선택해주세요')
+      return
+    }
+
+    setIsProcessing(true)
+    setError(null)
+
+    try {
+      // 1단계: 이미지 분석 및 변환
+      const formData = new FormData()
+      formData.append('image', uploadedImage)
+      formData.append('mode', 'transform')
+
+      const transformResponse = await fetch('/api/character/transform', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const transformData = await transformResponse.json()
+
+      if (!transformData.success) {
+        setError(transformData.error || '변환 중 오류가 발생했습니다')
+        return
+      }
+
+      setTransformedDescription(transformData.data)
+
+      // 2단계: 대안 이미지 2개 생성 (사용자가 선택할 수 있도록)
+      const generateResponse = await fetch('/api/character/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          characterDescription: transformData.data,
+          count: 2
+        }),
+      })
+
+      const generateData = await generateResponse.json()
+      console.log('Alternative images generation response:', generateData)
+
+      if (generateData.success && generateData.data.images.length >= 2) {
+        // 대안 이미지 2개 저장
+        setAlternativeImages(generateData.data.images)
+        // 메인 이미지의 캐릭터 설명 저장 (포즈 생성 시 일관성 유지용)
+        setMainCharacterDescription(transformData.data)
+      } else {
+        console.error('Image generation failed:', generateData)
+        setError(generateData.error || '대안 이미지 생성 중 오류가 발생했습니다')
+      }
+    } catch (err: any) {
+      console.error('Execute error:', err)
+      setError(`실행 중 오류가 발생했습니다: ${err.message || 'Unknown error'}`)
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // 메인 이미지와 일관된 포즈 변형 5개 자동 생성
+  const generateMultipleImagesWithVariations = async (characterDesc: string) => {
+    try {
+      const response = await fetch('/api/character/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          characterDescription: characterDesc, // 메인 이미지와 동일한 캐릭터 설명
+          count: 5,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setGeneratedImages(data.data.images)
+      } else {
+        setError(data.error || '이미지 생성 중 오류가 발생했습니다')
+      }
+    } catch (err) {
+      setError('이미지 생성 중 오류가 발생했습니다')
+    }
+  }
+
+  // 포즈 적용 버튼: 선택된 포즈로 5개 이미지 생성 (메인 이미지 일관성 유지)
+  const handleApplyPose = async () => {
+    if (!selectedPose) {
+      setError('포즈를 선택해주세요')
+      return
+    }
+
+    if (!mainCharacterDescription) {
+      setError('먼저 실행 버튼을 눌러주세요')
+      return
+    }
+
+    if (!mainImage) {
+      setError('메인 이미지가 없습니다')
+      return
+    }
+
+    setIsProcessing(true)
+    setError(null)
+
+    try {
+      // 메인 이미지의 캐릭터 설명을 기준으로 포즈만 변경하여 5개 이미지 생성
+      await generateMultipleImagesWithPose(selectedPose)
+    } catch (err) {
+      setError('포즈 생성 중 오류가 발생했습니다')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  // 메인 이미지 형태를 기준으로 포즈만 변경하여 이미지 생성
+  const generateMultipleImagesWithPose = async (poseId: string) => {
+    try {
+      const pose = CHARACTER_POSES.find(p => p.id === poseId)
+      if (!pose) {
+        setError('잘못된 포즈 ID입니다')
+        return
+      }
+
+      // 메인 이미지의 캐릭터 설명을 기준으로 선택된 포즈 적용
+      const response = await fetch('/api/character/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          characterDescription: mainCharacterDescription, // 처음 생성된 메인 이미지의 캐릭터 설명 사용
+          posePrompt: pose.prompt, // 선택된 포즈의 프롬프트
+          count: 5,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setGeneratedImages(data.data.images)
+      } else {
+        setError(data.error || '이미지 생성 중 오류가 발생했습니다')
+      }
+    } catch (err) {
+      setError('이미지 생성 중 오류가 발생했습니다')
+    }
+  }
+
+  // 대안 이미지 선택
+  const handleAlternativeSelect = (index: number) => {
+    setSelectedAlternativeIndex(index)
+    setMainImage(alternativeImages[index])
+  }
+
+  // 선택된 이미지로 포즈 3개 생성
+  const handleGeneratePoses = async () => {
+    if (!selectedAlternativeIndex && selectedAlternativeIndex !== 0) {
+      setError('대안 이미지를 선택해주세요')
+      return
+    }
+
+    if (!transformedDescription) {
+      setError('먼저 실행 버튼을 눌러주세요')
+      return
+    }
+
+    setIsProcessing(true)
+    setError(null)
+
+    try {
+      // 선택된 이미지의 스타일로 포즈 3개 생성
+      const response = await fetch('/api/character/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          characterDescription: transformedDescription,
+          count: 3,
+        }),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        setGeneratedImages(data.data.images)
+      } else {
+        setError(data.error || '포즈 생성 중 오류가 발생했습니다')
+      }
+    } catch (err) {
+      setError('포즈 생성 중 오류가 발생했습니다')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handlePoseSelect = (poseId: string) => {
+    setSelectedPose(poseId)
+    setGeneratedImages([])
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <Header />
-
-      {/* Hero Section */}
-      <section className="px-4 py-16 sm:px-6 lg:px-8">
-        <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl md:text-6xl font-bold text-gray-900 mb-6">
-            나만의 특별한
-            <span className="text-primary-600 block">굿즈를 만들어보세요</span>
-          </h2>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            고품질 인쇄와 정성스러운 제작으로 당신의 아이디어를 현실로 만들어드립니다.
-            PDF, PSD, AI 파일부터 이미지까지 다양한 형태로 업로드 가능합니다.
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-4xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            캐릭터 변환 & 생성
+          </h1>
+          <p className="text-gray-600">
+            이미지를 업로드하여 메리얼 스타일로 변환하고 다양한 포즈로 생성해보세요
           </p>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Link 
-              href="/upload" 
-              className="btn-touch w-full sm:w-auto bg-primary-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-primary-700 transition-colors shadow-lg"
+        </div>
+
+        {/* Error Message */}
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
+            {error}
+          </div>
+        )}
+
+        <div className="space-y-8">
+          {/* Step 1: Image Upload */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4">1단계: 이미지 업로드</h2>
+            
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="mb-4"
+              disabled={isProcessing}
+            />
+
+            {previewUrl && (
+              <div className="mt-4">
+                <img
+                  src={previewUrl}
+                  alt="Uploaded preview"
+                  className="max-w-xs mx-auto rounded-lg shadow-md"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Step 2: Execute (Transform + Generate Main Image) */}
+          <div className="bg-white rounded-lg shadow-md p-6">
+            <h2 className="text-xl font-semibold mb-4">
+              2단계: 실행
+            </h2>
+            
+            <button
+              onClick={handleExecute}
+              disabled={!uploadedImage || isProcessing}
+              className="w-full py-3 px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
-              지금 시작하기
-            </Link>
-            <Link 
-              href="/portfolio" 
-              className="btn-touch w-full sm:w-auto border-2 border-primary-600 text-primary-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-primary-50 transition-colors"
-            >
-              작업 사례 보기
-            </Link>
+              {isProcessing ? '실행 중...' : '실행'}
+            </button>
+
+            {transformedDescription && (
+              <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+                <h3 className="font-medium mb-2">변환된 캐릭터 설명:</h3>
+                <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                  {transformedDescription}
+                </p>
+              </div>
+            )}
+
+            {/* 대안 이미지 2개 선택 */}
+            {alternativeImages.length >= 2 && (
+              <div className="mt-6">
+                <h3 className="font-medium mb-4">원하는 스타일을 선택해주세요:</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  {alternativeImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleAlternativeSelect(idx)}
+                      disabled={isProcessing}
+                      className={`border-2 rounded-lg p-2 transition-all ${
+                        selectedAlternativeIndex === idx
+                          ? 'border-primary-600 bg-primary-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="bg-gray-100 aspect-square rounded flex items-center justify-center overflow-hidden">
+                        {img && typeof img === 'object' && img.type === 'image' && (img.data || img.url) ? (
+                          <img
+                            src={img.url || `data:${img.mimeType || 'image/png'};base64,${img.data}`}
+                            alt={`Alternative ${idx + 1}`}
+                            className="w-full h-full object-contain"
+                          />
+                        ) : (
+                          <div className="text-center p-4">
+                            <div className="text-4xl mb-2">🎨</div>
+                            <p className="text-sm text-gray-600 font-medium">대안 {idx + 1}</p>
+                          </div>
+                        )}
+                      </div>
+                      {selectedAlternativeIndex === idx && (
+                        <p className="text-sm text-primary-600 font-medium mt-2 text-center">✓ 선택됨</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+                
+                {selectedAlternativeIndex !== null && (
+                  <div className="mt-4">
+                    <button
+                      onClick={handleGeneratePoses}
+                      disabled={isProcessing}
+                      className="w-full py-3 px-4 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {isProcessing ? '포즈 생성 중...' : '포즈 3개 생성'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
+
+          {/* Generated Images */}
+          {generatedImages.length > 0 && (
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-semibold mb-4">
+                생성된 포즈 이미지 (3개)
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {generatedImages.map((image, index) => (
+                  <div key={index} className="border rounded-lg p-2">
+                    <div className="bg-gray-100 aspect-square rounded flex items-center justify-center overflow-hidden">
+                      {image && typeof image === 'object' && image.type === 'image' && (image.data || image.url) ? (
+                        <img
+                          src={image.url || `data:${image.mimeType || 'image/png'};base64,${image.data}`}
+                          alt={`Generated image ${index + 1}`}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <div className="text-center p-4">
+                          <div className="text-4xl mb-2">🎨</div>
+                          <p className="text-sm text-gray-600 font-medium">이미지 {index + 1}</p>
+                          <p className="text-xs text-gray-400 mt-2">
+                            {image && typeof image === 'object' && image.note ? image.note : '프롬프트가 생성되었습니다'}
+                          </p>
+                          {image && typeof image === 'object' && image.content && (
+                            <p className="text-xs text-gray-500 mt-3 italic line-clamp-3">
+                              "{image.content.substring(0, 80)}..."
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="px-4 py-16 bg-white">
-        <div className="max-w-6xl mx-auto">
-          <h3 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            왜 메리얼을 선택해야 할까요?
-          </h3>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="text-center p-6">
-              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-              </div>
-              <h4 className="text-xl font-semibold mb-3">간편한 업로드</h4>
-              <p className="text-gray-600">
-                PDF, PSD, AI, PNG, JPG 등 다양한 파일 형식을 지원합니다.
-                모바일에서도 쉽게 업로드할 수 있어요.
-              </p>
-            </div>
-
-            <div className="text-center p-6">
-              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                </svg>
-              </div>
-              <h4 className="text-xl font-semibold mb-3">투명한 가격</h4>
-              <p className="text-gray-600">
-                토스 페이먼츠를 통한 안전한 결제 시스템으로
-                투명하고 합리적인 가격을 제공합니다.
-              </p>
-            </div>
-
-            <div className="text-center p-6">
-              <div className="w-16 h-16 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-primary-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <h4 className="text-xl font-semibold mb-3">실시간 관리</h4>
-              <p className="text-gray-600">
-                주문부터 배송까지 실시간으로 진행상황을 확인할 수 있고,
-                마이페이지에서 모든 내역을 관리할 수 있어요.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Process Section */}
-      <section className="px-4 py-16 bg-gray-50">
-        <div className="max-w-4xl mx-auto">
-          <h3 className="text-3xl font-bold text-center text-gray-900 mb-12">
-            간단한 3단계로 완성
-          </h3>
-          
-          <div className="space-y-8">
-            <div className="flex items-center space-x-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
-                1
-              </div>
-              <div>
-                <h4 className="text-xl font-semibold mb-2">파일 업로드</h4>
-                <p className="text-gray-600">원하는 디자인 파일을 업로드하고 옵션을 선택하세요.</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
-                2
-              </div>
-              <div>
-                <h4 className="text-xl font-semibold mb-2">결제 진행</h4>
-                <p className="text-gray-600">토스 페이먼츠로 안전하고 간편하게 결제를 완료하세요.</p>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-4">
-              <div className="flex-shrink-0 w-12 h-12 bg-primary-600 text-white rounded-full flex items-center justify-center font-bold text-lg">
-                3
-              </div>
-              <div>
-                <h4 className="text-xl font-semibold mb-2">제작 및 배송</h4>
-                <p className="text-gray-600">전문가가 정성껏 제작하여 안전하게 배송해드립니다.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="px-4 py-16 bg-primary-600">
-        <div className="max-w-4xl mx-auto text-center">
-          <h3 className="text-3xl font-bold text-white mb-6">
-            지금 바로 시작해보세요
-          </h3>
-          <p className="text-xl text-primary-100 mb-8">
-            회원가입하고 첫 주문 시 특별 할인 혜택을 받아보세요!
-          </p>
-          <Link 
-            href="/signup" 
-            className="btn-touch inline-block bg-white text-primary-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg"
-          >
-            무료 회원가입
-          </Link>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <h4 className="text-xl font-bold mb-4">Mereal</h4>
-              <p className="text-gray-400">
-                프리미엄 굿즈 제작 서비스
-              </p>
-            </div>
-            
-            <div>
-              <h5 className="font-semibold mb-3">서비스</h5>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link href="/services">굿즈 제작</Link></li>
-                <li><Link href="/pricing">가격 안내</Link></li>
-                <li><Link href="/portfolio">포트폴리오</Link></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h5 className="font-semibold mb-3">고객지원</h5>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link href="/faq">자주 묻는 질문</Link></li>
-                <li><Link href="/contact">문의하기</Link></li>
-                <li><Link href="/guide">이용가이드</Link></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h5 className="font-semibold mb-3">회사정보</h5>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link href="/about">회사소개</Link></li>
-                <li><Link href="/terms">이용약관</Link></li>
-                <li><Link href="/privacy">개인정보처리방침</Link></li>
-              </ul>
-            </div>
-          </div>
-          
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Mereal. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
   )
 }
