@@ -98,43 +98,70 @@ CRITICAL: This is the EXACT SAME CHARACTER. Maintain IDENTICAL species, breed, c
 
             // 응답에서 이미지 데이터 추출
             if (data.candidates && data.candidates.length > 0) {
-              const parts = data.candidates[0].content.parts
-              
-              // inlineData가 있는 경우 (base64 이미지)
-              const imagePart = parts?.find((part: any) => part.inlineData)
-              if (imagePart?.inlineData) {
-                const inlineData = imagePart.inlineData
-                images.push({
-                  type: 'image',
-                  url: `data:${inlineData.mimeType};base64,${inlineData.data}`,
-                  data: inlineData.data,
-                  mimeType: inlineData.mimeType,
-                  variation: i + 1
-                })
-                validImage = true
-                continue
+              const candidate = data.candidates[0]
+              if (candidate.content && candidate.content.parts) {
+                const parts = candidate.content.parts
+                
+                // inlineData가 있는 경우 (base64 이미지)
+                const imagePart = parts.find((part: any) => part.inlineData)
+                if (imagePart?.inlineData) {
+                  const inlineData = imagePart.inlineData
+                  if (inlineData.data && inlineData.mimeType) {
+                    images.push({
+                      type: 'image',
+                      url: `data:${inlineData.mimeType};base64,${inlineData.data}`,
+                      data: inlineData.data,
+                      mimeType: inlineData.mimeType,
+                      variation: i + 1
+                    })
+                    validImage = true
+                    continue
+                  }
+                }
               }
             }
 
             // 텍스트 응답에서 URL 찾기
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
-            console.log('Gemini text response:', text.substring(0, 300))
-            
-            const urlMatch = text.match(/https?:\/\/[^\s<>"]+/)
-            if (urlMatch) {
-              images.push({
-                type: 'image',
-                url: urlMatch[0],
-                data: urlMatch[0],
-                mimeType: 'image/png',
-                variation: i + 1
-              })
-              validImage = true
-            } else {
-              throw new Error(`No image data found. Response: ${text.substring(0, 200)}`)
+            try {
+              const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+              console.log('Gemini text response:', text.substring(0, 300))
+              
+              if (text && typeof text === 'string') {
+                const urlMatch = text.match(/https?:\/\/[^\s<>"]+/)
+                if (urlMatch) {
+                  images.push({
+                    type: 'image',
+                    url: urlMatch[0],
+                    data: urlMatch[0],
+                    mimeType: 'image/png',
+                    variation: i + 1
+                  })
+                  validImage = true
+                } else {
+                  console.warn(`No image URL found in response: ${text.substring(0, 200)}`)
+                }
+              } else {
+                console.warn('No text content in response')
+              }
+            } catch (textError) {
+              console.error('Text parsing error:', textError)
             }
           } catch (error: any) {
             console.error(`Image ${i + 1} generation error (retry ${retryCount}):`, error)
+            
+            // 패턴 매칭 오류인 경우 더 구체적인 메시지 제공
+            if (error.message && error.message.includes('pattern')) {
+              console.error('Pattern matching error detected, skipping retry')
+              const prompt = merealSystemPrompt + `\n\nCharacter: ${characterDescription}${posePrompt ? `\nPose: ${posePrompt}` : ''}`
+              images.push({
+                type: 'prompt',
+                content: prompt,
+                variation: i + 1,
+                note: `API 응답 형식 오류: ${error.message}`
+              })
+              break
+            }
+            
             retryCount++
             if (retryCount <= maxRetries) {
               await new Promise(resolve => setTimeout(resolve, 1000))
