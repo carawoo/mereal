@@ -25,6 +25,7 @@
 - **Authentication**: Supabase Auth
 - **Payment**: 토스페이먼츠 (Toss Payments)
 - **File Storage**: Supabase Storage
+- **AI**: Google AI Studio (Gemini)
 - **Deployment**: Vercel (권장)
 
 ## 설치 및 실행
@@ -60,6 +61,9 @@ NEXTAUTH_SECRET=your_nextauth_secret_here
 # File Upload Configuration
 MAX_FILE_SIZE=10485760
 ALLOWED_FILE_TYPES=pdf,psd,ai,png,jpg,jpeg
+
+# Google AI Studio Configuration
+GOOGLE_AI_STUDIO_API_KEY=your_google_ai_studio_api_key_here
 ```
 
 ### 4. 데이터베이스 설정
@@ -130,6 +134,12 @@ Next.js가 지원하는 모든 플랫폼에 배포 가능합니다.
 1. [토스페이먼츠](https://developers.tosspayments.com) 개발자 등록
 2. 클라이언트 키와 시크릿 키 발급
 3. 웹훅 URL 설정
+
+### Google AI Studio 설정
+1. [Google AI Studio](https://aistudio.google.com) 접속
+2. 새 프로젝트 생성 또는 기존 프로젝트 선택
+3. API 키 생성 및 복사
+4. `.env.local` 파일에 `GOOGLE_AI_STUDIO_API_KEY` 설정
 
 ## 주의사항
 

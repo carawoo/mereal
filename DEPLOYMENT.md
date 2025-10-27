@@ -46,7 +46,10 @@ Vercel Dashboard → Settings → Environment Variables에서 다음 변수들�
 
 #### 기타 설정
 - `NEXTAUTH_SECRET`: 랜덤 시크릿 키 (32자 이상)
-- `NEXTAUTH_URL`: 배포된 도메인 URL (예: https://your-app.vercel.app)
+- `NEXTAUTH_URL`: 배포된 도메인 URL (예: https://mereal.real-e.space)
+
+#### Google AI Studio 설정
+- `GOOGLE_AI_STUDIO_API_KEY`: Google AI Studio API 키
 
 ## 🗄️ Supabase 설정
 
@@ -68,9 +71,9 @@ Vercel Dashboard → Settings → Environment Variables에서 다음 변수들�
 
 ### 4. Authentication 설정
 1. Authentication → Settings
-2. Site URL: 배포된 도메인 추가
+2. Site URL: `https://mereal.real-e.space` 추가
 3. Redirect URLs: 
-   - `https://your-domain.com/auth/callback`
+   - `https://mereal.real-e.space/auth/callback`
    - `http://localhost:3000/auth/callback` (개발용)
 
 ## 💳 토스페이먼츠 설정
@@ -81,9 +84,9 @@ Vercel Dashboard → Settings → Environment Variables에서 다음 변수들�
 3. API 키 발급
 
 ### 2. 웹훅 설정
-- Success URL: `https://your-domain.com/payment/success`
-- Fail URL: `https://your-domain.com/payment/fail`
-- Webhook URL: `https://your-domain.com/api/payments/webhook`
+- Success URL: `https://mereal.real-e.space/payment/success`
+- Fail URL: `https://mereal.real-e.space/payment/fail`
+- Webhook URL: `https://mereal.real-e.space/api/payments/webhook`
 
 ## 👨‍💼 관리자 계정 생성
 
