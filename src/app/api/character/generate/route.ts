@@ -41,6 +41,18 @@ STYLE RULES:
 8. Background: Plain white ONLY - no hands, no microphones, no accessories, no decorations, no props, no objects, NO branches, NO perches, NO tree-like elements.
 9. Overall: Simple, cute, flat cartoon style - like a sticker with accurate animal features but simplified flat colors.
 
+SPECIAL RULES FOR DUCKS/GEESE (오리/거위류):
+- Body: Cream white or very light yellow, pear-shaped/teardrop-shaped, slightly elongated but compact
+- Beak: Short, rounded, warm orange color, no sharp edges
+- Feet: Webbed duck feet, warm orange color, rounded edges
+- Wings: Simple flat shapes on sides, no individual feather details
+- Tail: Small, simple, cream white or same as body
+- Eyes: Tiny solid black dots, positioned naturally
+- Blush: Small circular light pink spots on cheeks
+- Outline: Very thick dark brown outline (30% darker than cream body)
+- Pose: Natural standing position, head slightly turned, feet firmly on ground
+- Proportions: Body larger than head, head connects directly to body
+
 CRITICAL: Small head, pure black eyes, flat colors, white background only.
 
 IMPORTANT: When creating variations or different poses of the same character, maintain IDENTICAL species, breed, colors, body shape, size, all features, and proportions. Only the pose/position should change.`
@@ -79,6 +91,18 @@ Style: Cute simplified flat cartoon
 - Wing patterns as flat colored shapes (simplified, not detailed, minimal lines). NO fur texture lines inside body, NO individual hair strands - just completely smooth flat colored areas
 - Small circular pink blush on cheeks (flat pink, no highlights)
 - Plain white background only - NO branches, NO perches, NO tree-like elements, NO objects
+
+SPECIAL DUCK/GOOSE STYLE (if character is duck/goose):
+- Body: Cream white or very light yellow, pear-shaped/teardrop-shaped, slightly elongated but compact
+- Beak: Short, rounded, warm orange color, no sharp edges
+- Feet: Webbed duck feet, warm orange color, rounded edges
+- Wings: Simple flat shapes on sides, no individual feather details
+- Tail: Small, simple, cream white or same as body
+- Eyes: Tiny solid black dots, positioned naturally
+- Blush: Small circular light pink spots on cheeks
+- Outline: Very thick dark brown outline (30% darker than cream body)
+- Pose: Natural standing position, head slightly turned, feet firmly on ground
+- Proportions: Body larger than head, head connects directly to body
 
 CRITICAL: This is the EXACT SAME CHARACTER. Maintain IDENTICAL species, breed, colors, body shape, size, features, proportions, head size, ear shape, tail shape. ONLY the body pose/position should change slightly.${i > 0 ? `\n\nVariation ${i + 1} of the same character. Same species, same breed, same colors, same size, same features, same proportions. ONLY change pose.` : ''}${posePrompt ? `\n\nPose: ${posePrompt}` : ''}`
                     }]
